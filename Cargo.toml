@@ -183,3 +183,8 @@ required-features = ["ld", "rt", "stm32f303xc"]
 name = "rcc"
 required-features = ["ld", "defmt"]
 harness = false
+
+[[test]]
+name = "gpio"
+required-features = ["rt", "defmt"]
+harness = false
