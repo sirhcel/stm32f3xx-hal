@@ -24,16 +24,15 @@ mod tests {
         let dp = unwrap!(pac::Peripherals::take());
 
         let mut rcc = dp.RCC.constrain();
-        let mut gpiob = dp.GPIOB.split(&mut rcc.ahb);
-        // TODO: Get pa9 and pa10 because these also implement spi and uart
-        let input_ground = gpiob
-            .pb8
-            .into_floating_input(&mut gpiob.moder, &mut gpiob.pupdr)
+        let mut gpioc = dp.GPIOC.split(&mut rcc.ahb);
+        let input_ground = gpioc
+            .pc3
+            .into_floating_input(&mut gpioc.moder, &mut gpioc.pupdr)
             .downgrade()
             .downgrade();
-        let input_vdd = gpiob
-            .pb9
-            .into_floating_input(&mut gpiob.moder, &mut gpiob.pupdr)
+        let input_vdd = gpioc
+            .pc2
+            .into_floating_input(&mut gpioc.moder, &mut gpioc.pupdr)
             .downgrade()
             .downgrade();
 
