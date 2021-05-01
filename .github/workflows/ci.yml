@@ -92,16 +92,14 @@ jobs:
           command: check
           args: --features=stm32f303xc,stm32-usbd,rt,can,ld --lib --examples
 
-  check-tests:
-    name: Check Tests
+  build-testsuite:
+    name: Build Testsuite
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test:
-          - rcc
         mcu:
-          - stm32f303xc
-          - stm32f303xd
+          - stm32f3xx-hal/stm32f303xc
+          - stm32f3xx-hal/stm32f303xd
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -110,10 +108,9 @@ jobs:
           target: thumbv7em-none-eabihf
           override: true
           profile: minimal
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --features=ld,defmt,${{ matrix.mcu }} --test ${{ matrix.test }}
+      - name: Build tests
+        working-directory: testsuite
+        run: cargo test --no-run --features=${{ matrix.mcu }}
 
   clippy:
     name: Clippy
