@@ -6,7 +6,7 @@ use panic_probe as _;
 
 use stm32f3xx_hal as hal;
 
-use hal::gpio::{Input, Output, PXx, PushPull};
+use hal::gpio::{Input, PXx};
 
 struct State {
     input_ground: PXx<Input>,
