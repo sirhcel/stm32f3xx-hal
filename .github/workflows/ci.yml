@@ -110,7 +110,7 @@ jobs:
           profile: minimal
       - name: Build tests
         working-directory: testsuite
-        run: cargo test --no-run --features=${{ matrix.mcu }}
+        run: cargo test --no-run --no-default-features --features=${{ matrix.mcu }}
 
   clippy:
     name: Clippy
