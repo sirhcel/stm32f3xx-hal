@@ -109,7 +109,8 @@ jobs:
           override: true
           profile: minimal
       - uses: actions-rs/cargo@v1
-        run: cargo test -p testsuite --no-run --no-default-features --features=${{ matrix.mcu }}
+        command: test
+        args: -p testsuite --no-run --no-default-features --features=${{ matrix.mcu }}
 
   clippy:
     name: Clippy
