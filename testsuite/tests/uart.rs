@@ -16,6 +16,8 @@ use hal::pac;
 use hal::prelude::*;
 use hal::serial::{Rx, Serial, Tx};
 
+use core::array::IntoIter;
+
 use hal::serial::Error;
 
 struct State {
@@ -122,10 +124,10 @@ mod tests {
     #[test]
     fn send_receive_split(state: &mut super::State) {
         let (mut tx, mut rx) = unwrap!(state.serial1.take()).split();
-        for i in &TEST_MSG {
-            nb::block!(tx.write(*i));
+        for i in IntoIter::new(TEST_MSG) {
+            nb::block!(tx.write(i));
             let c = unwrap!(nb::block!(rx.read()));
-            assert_eq!(c, *i);
+            assert_eq!(c, i);
         }
 
         // now provoke an overrun
