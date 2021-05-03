@@ -156,4 +156,6 @@ mod tests {
         defmt::info!("{}", c);
         assert!(matches!(c, Err(Error::Framing)));
     }
+
+    // TODO: Check the parity. But currently, there is no way to configure the parity
 }
