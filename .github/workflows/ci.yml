@@ -108,9 +108,8 @@ jobs:
           target: thumbv7em-none-eabihf
           override: true
           profile: minimal
-      - name: Build tests
-        working-directory: testsuite
-        run: cargo test --no-run --no-default-features --features=${{ matrix.mcu }}
+      - uses: actions-rs/cargo@v1
+        run: cargo test -p testsuite --no-run --no-default-features --features=${{ matrix.mcu }}
 
   clippy:
     name: Clippy
