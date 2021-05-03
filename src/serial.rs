@@ -1,6 +1,7 @@
 //! Serial
 
 use core::{convert::Infallible, marker::PhantomData, ptr};
+use core::fmt::Display;
 
 use crate::{
     gpio::{gpioa, gpiob, gpioc, AF7},
@@ -29,6 +30,7 @@ pub enum Event {
 
 /// Serial error
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum Error {
     /// Framing error
