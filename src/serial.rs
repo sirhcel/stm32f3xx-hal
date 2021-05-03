@@ -11,6 +11,8 @@ use crate::{
     time::rate::*,
 };
 
+// use crate::pac::{usart1, usart2, usart3};
+
 use cfg_if::cfg_if;
 
 cfg_if! {
@@ -100,11 +102,18 @@ pub struct Serial<USART, PINS> {
 /// Serial receiver
 pub struct Rx<USART> {
     _usart: PhantomData<USART>,
+    // pin: *const dyn RxPin<USART>,
 }
 
 /// Serial transmitter
 pub struct Tx<USART> {
     _usart: PhantomData<USART>,
+    // pin: *const dyn TxPin<USART>,
+}
+
+pub struct Usart<USART, PINS> {
+    usart: USART,
+    pins: PINS,
 }
 
 macro_rules! hal {
@@ -114,6 +123,9 @@ macro_rules! hal {
         $(
             impl<TX, RX> Serial<$USARTX, (TX, RX)> {
                 /// Configures a USART peripheral to provide serial communication
+                // TODO: change to new()
+                // TODO: Why is baudrate not enum?
+                // TODO: What about parity??
                 pub fn $usartX(
                     usart: $USARTX,
                     pins: (TX, RX),
@@ -141,7 +153,7 @@ macro_rules! hal {
                         w.te().enabled()   // enable transmitter
                     });
 
-                    Serial { usart, pins }
+                    Self { usart, pins }
                 }
 
                 /// Starts listening for an interrupt event
@@ -173,11 +185,18 @@ macro_rules! hal {
                     (
                         Tx {
                             _usart: PhantomData,
+                            // pin: self.pins.0,
                         },
                         Rx {
                             _usart: PhantomData,
+                            // pin: self.pins.1,
                         },
                     )
+                }
+
+                /// Releases the USART peripheral and associated pins
+                pub fn join(tx: Tx<$USARTX> , rx: Rx<$USARTX>) -> Self {
+                    unimplemented!();
                 }
 
                 /// Releases the USART peripheral and associated pins
@@ -186,6 +205,7 @@ macro_rules! hal {
                 }
             }
 
+            // TODO: Impl serial read write normal without nb blocking
             impl serial::Read<u8> for Rx<$USARTX> {
                 type Error = Error;
 
@@ -219,6 +239,7 @@ macro_rules! hal {
                 }
             }
 
+            // TODO: impl serial::Write | Read for UART without split
             impl serial::Write<u8> for Tx<$USARTX> {
                 // NOTE(Infallible) See section "29.7 USART interrupts"; the only possible errors during
                 // transmission are: clear to send (which is disabled in this case) errors and
@@ -340,6 +361,55 @@ macro_rules! hal {
         )+
     }
 }
+
+// mod private {
+//     pub trait Sealed {}
+// }
+
+// /// UART instance -- DO NOT IMPLEMENT THIS TRAIT
+// pub unsafe trait Instance: Deref<Target = RegisterBlock> {
+//     type APB;
+//     #[doc(hidden)]
+//     fn enable_clock(apb1: &mut APB);
+//     #[doc(hidden)]
+//     fn clock(clocks: &Clocks) -> Hertz;
+// }
+
+// macro_rules! uart {
+//     ($($I2CX:ident, $APBX:ident: ($usartXen:ident, $usartXrst:ident, $usartXsw:ident),)+) => {
+//         $(
+//             unsafe impl Instance for $I2CX {
+//                 type APB = $APBX;
+//                 fn enable_clock(apbx: &mut APB) {
+//                     unimplemented!();
+//                     // apbx.enr().modify(|_, w| w.$i2cXen().enabled());
+//                     // apbx.rstr().modify(|_, w| w.$i2cXrst().reset());
+//                     // apbx.rstr().modify(|_, w| w.$i2cXrst().clear_bit());
+//                 }
+
+//                 fn clock(clocks: &Clocks) -> Hertz {
+//                     unimplemented!();
+//                     // // NOTE(unsafe) atomic read with no side effects
+//                     // match unsafe { (*RCC::ptr()).cfgr3.read().$i2cXsw().variant() } {
+//                     //     I2C1SW_A::HSI => Hertz(8_000_000),
+//                     //     I2C1SW_A::SYSCLK => clocks.sysclk(),
+//                     // }
+//                 }
+//             }
+//         )+
+//     };
+
+//     ([ $($X:literal, $Y:literal),+ ]) => {
+//         paste::paste! {
+//             uart!(
+//                 $([<UART $X>], [<APB $Y>]: ([<uart $X en>], [<uart $X rst>], [<uart $X sw>]),)+
+//             );
+//         }
+//     };
+// }
+
+// uart!([(1,1)])
+
 
 hal! {
     USART1: (usart1, APB2, usart1en, usart1rst, pclk2),
