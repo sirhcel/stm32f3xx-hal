@@ -5,6 +5,11 @@
 #![no_std]
 #![no_main]
 
+#[cfg(feature = "defmt")]
+use defmt_rtt as _;
+#[cfg(feature = "defmt")]
+use panic_probe as _;
+#[cfg(not(feature = "defmt"))]
 use panic_semihosting as _;
 
 use cortex_m::{asm, singleton};
