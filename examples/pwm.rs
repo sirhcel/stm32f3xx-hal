@@ -28,7 +28,7 @@ fn main() -> ! {
     // Configure our clocks
     let mut flash = dp.FLASH.constrain();
     let mut rcc = dp.RCC.constrain();
-    let clocks = rcc.cfgr.sysclk(16u32.MHz()).freeze(&mut flash.acr);
+    let clocks = rcc.cfgr.sysclk(16.MHz()).freeze(&mut flash.acr);
 
     // Prep the pins we need in their correct alternate function
     let mut gpioa = dp.GPIOA.split(&mut rcc.ahb);
@@ -73,7 +73,7 @@ fn main() -> ! {
     let tim3_channels = tim3(
         dp.TIM3,
         1280,       // resolution of duty cycle
-        50u32.Hz(), // frequency of period
+        50.Hz(), // frequency of period
         &clocks,    // To get the timer's clock speed
     );
 
@@ -122,7 +122,7 @@ fn main() -> ! {
     let tim2_channels = tim2(
         dp.TIM2,
         160000,     // resolution of duty cycle
-        50u32.Hz(), // frequency of period
+        50.Hz(), // frequency of period
         &clocks,    // To get the timer's clock speed
     );
 
@@ -137,7 +137,7 @@ fn main() -> ! {
     let mut tim16_ch1 = tim16(
         dp.TIM16,
         1280,       // resolution of duty cycle
-        50u32.Hz(), // frequency of period
+        50.Hz(), // frequency of period
         &clocks,    // To get the timer's clock speed
     )
     .output_to_pb8(pb8);
