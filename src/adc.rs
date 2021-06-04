@@ -477,15 +477,16 @@ macro_rules! adc_hal {
 
             }
 
-            impl<WORD, PIN> OneShot<$ADC, WORD, PIN> for Adc<$ADC>
+            impl<Word, Pin> OneShot<$ADC, Word, Pin> for Adc<$ADC>
             where
-                WORD: From<u16>,
-                PIN: Channel<$ADC, ID = u8>,
+                Word: From<u16>,
+                Pin: Channel<$ADC, ID = u8>,
                 {
                     type Error = ();
 
-                    fn read(&mut self, _pin: &mut PIN) -> nb::Result<WORD, Self::Error> {
-                        let res = self.convert_one(PIN::channel());
+                    fn read(&mut self, _pin: &mut Pin) -> nb::Result<Word, Self::Error> {
+                        // TODO: Convert back to previous mode after use.
+                        let res = self.convert_one(Pin::channel());
                         return Ok(res.into());
                     }
                 }

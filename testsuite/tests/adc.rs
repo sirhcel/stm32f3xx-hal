@@ -76,7 +76,7 @@ mod tests {
     #[test]
     fn measure_pin_high_low(state: &mut State) {
         let mut adc = defmt::unwrap!(state.adc.take());
-        for _ in 1..10 {
+        for _ in 0..10 {
             defmt::unwrap!(state.output.set_high());
             let adc_level: u16 = defmt::unwrap!(adc.read(&mut state.analog).ok());
             defmt::info!("{}", adc_level);
@@ -85,7 +85,7 @@ mod tests {
             defmt::assert!(adc_level >= 4070 && adc_level <= 4100);
             let adc_level: u16 = defmt::unwrap!(adc.read(&mut state.analog).ok());
             defmt::info!("{}", adc_level);
-            defmt::assert_eq!(adc_level, 0);
+            defmt::assert!(adc_level >= 0 && adc_level <= 10);
         }
 
         // put adc back in place
