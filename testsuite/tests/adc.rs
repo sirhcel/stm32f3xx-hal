@@ -92,24 +92,24 @@ mod tests {
         state.adc.replace(adc);
     }
 
-    // #[test]
-    // fn free_and_reconfigure(state: &mut State) {
-    //     let mut adc = defmt::unwrap!(state.adc.take());
-    //     defmt::debug!("Free");
-    //     let adc1 = adc.free();
+    #[test]
+    fn free_and_reconfigure(state: &mut State) {
+        let mut adc = defmt::unwrap!(state.adc.take());
+        defmt::debug!("Free");
+        let adc1 = adc.free();
 
-    //     // FIXME: This is not working (stuck on this function)
-    //     defmt::debug!("Reconfigure");
-    //     let new_adc = adc::Adc::adc1(
-    //         adc1,
-    //         &mut state.adc1_2,
-    //         &mut state.ahb,
-    //         adc::CkMode::default(),
-    //         state.clocks,
-    //     );
+        // FIXME: This is not working (stuck on this function)
+        defmt::debug!("Reconfigure");
+        let new_adc = adc::Adc::adc1(
+            adc1,
+            &mut state.adc1_2,
+            &mut state.ahb,
+            adc::CkMode::default(),
+            state.clocks,
+        );
 
-    //     defmt::debug!("Replace");
-    //     // put adc back in place
-    //     state.adc.replace(new_adc);
-    // }
+        defmt::debug!("Replace");
+        // put adc back in place
+        state.adc.replace(new_adc);
+    }
 }
