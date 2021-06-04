@@ -95,6 +95,7 @@ mod tests {
         // super::State { serial, clocks, apb2: rcc.apb2 }
     }
 
+    // FIXME:
     // Problems:
     // 1. if we split, we can not join (no runtime informatino which pins where associated with the
     //    uart)
@@ -158,4 +159,6 @@ mod tests {
     }
 
     // TODO: Check the parity. But currently, there is no way to configure the parity
+    // #[test]
+    // fn check_parity(state: &mut super::State) { }
 }
