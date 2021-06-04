@@ -17,7 +17,6 @@ struct State {
 mod tests {
     use defmt::{assert, unwrap};
     use stm32f3xx_hal::{pac, prelude::*};
-    use testsuite::GenericPair;
 
     // Test the defaults with no configuration
     #[init]
@@ -27,18 +26,20 @@ mod tests {
         let mut rcc = dp.RCC.constrain();
         let mut gpioc = dp.GPIOC.split(&mut rcc.ahb);
 
-        let pair = GenericPair {
-            0: gpioc
-                .pc0
-                .into_floating_input(&mut gpioc.moder, &mut gpioc.pupdr),
-            1: gpioc
-                .pc1
-                .into_push_pull_output(&mut gpioc.moder, &mut gpioc.otyper),
-        };
+        let input_pin = gpioc
+            .pc0
+            .into_floating_input(&mut gpioc.moder, &mut gpioc.pupdr)
+            .downgrade()
+            .downgrade();
+        let output_pin = gpioc
+            .pc1
+            .into_push_pull_output(&mut gpioc.moder, &mut gpioc.otyper)
+            .downgrade()
+            .downgrade();
 
         super::State {
-            input_pin: pair.0.downgrade().downgrade(),
-            output_pin: pair.1.downgrade().downgrade(),
+            input_pin,
+            output_pin,
         }
     }
 
