@@ -42,6 +42,7 @@ const TEST_MSG: [u8; 8] = [0xD, 0xE, 0xA, 0xD, 0xB, 0xE, 0xE, 0xF];
 mod tests {
     use super::*;
     use defmt::{self, assert, assert_eq, unwrap};
+    use testsuite::GenericPair;
 
     #[init]
     fn init() -> State {
@@ -51,6 +52,13 @@ mod tests {
         let mut flash = dp.FLASH.constrain();
         let clocks = rcc.cfgr.freeze(&mut flash.acr);
         let mut gpioc = dp.GPIOC.split(&mut rcc.ahb);
+
+        let pair = GenericPair {
+            0: gpioc.pc0.into_analog(&mut gpioc.moder, &mut gpioc.pupdr),
+            1: gpioc
+                .pc1
+                .into_push_pull_output(&mut gpioc.moder, &mut gpioc.otyper),
+        };
 
         State {
             adc: Some(adc::Adc::adc1(
@@ -62,10 +70,8 @@ mod tests {
                 adc::CkMode::default(),
                 clocks,
             )),
-            analog: gpioc.pc0.into_analog(&mut gpioc.moder, &mut gpioc.pupdr),
-            output: gpioc
-                .pc1
-                .into_push_pull_output(&mut gpioc.moder, &mut gpioc.otyper),
+            analog: pair.0,
+            output: pair.1,
             ahb: rcc.ahb,
             flash,
             clocks,
