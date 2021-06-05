@@ -1,12 +1,11 @@
 //! Serial
 
-use core::{convert::Infallible, marker::PhantomData, ptr};
-use core::fmt::Display;
+use core::{convert::Infallible, marker::PhantomData, ptr, ops::Deref};
 
 use crate::{
     gpio::{gpioa, gpiob, gpioc, AF7},
     hal::{blocking, serial},
-    pac::{USART1, USART2, USART3},
+    pac::{RCC, usart1::RegisterBlock, USART1, USART2, USART3, rcc::cfgr3::USART1SW_A},
     rcc::{Clocks, APB1, APB2},
     time::rate::*,
 };
@@ -114,6 +113,24 @@ pub struct Tx<USART> {
 pub struct Usart<USART, PINS> {
     usart: USART,
     pins: PINS,
+}
+
+impl<USART, TX, RX> Serial<USART, (TX, RX)> {
+    pub fn new(
+        usart: USART,
+        pins: (TX, RX),
+        baud_rate: Baud,
+        clocks: Clocks,
+        apb: &mut <USART as Instance>::APB,
+    ) -> Self
+    where
+        USART: Instance,
+        TX: TxPin<USART>,
+        RX: RxPin<USART>,
+    {
+        USART::enable_clock(apb);
+        crate::unimplemented!();
+    }
 }
 
 macro_rules! hal {
@@ -362,54 +379,57 @@ macro_rules! hal {
     }
 }
 
-// mod private {
-//     pub trait Sealed {}
-// }
+mod private {
+    pub trait Sealed {}
+}
 
-// /// UART instance -- DO NOT IMPLEMENT THIS TRAIT
-// pub unsafe trait Instance: Deref<Target = RegisterBlock> {
-//     type APB;
-//     #[doc(hidden)]
-//     fn enable_clock(apb1: &mut APB);
-//     #[doc(hidden)]
-//     fn clock(clocks: &Clocks) -> Hertz;
-// }
+/// UART instance
+pub trait Instance: Deref<Target = RegisterBlock> + private::Sealed {
+    type APB;
+    #[doc(hidden)]
+    fn enable_clock(apb1: &mut Self::APB);
+    #[doc(hidden)]
+    fn clock(clocks: &Clocks) -> Hertz;
+}
 
-// macro_rules! uart {
-//     ($($I2CX:ident, $APBX:ident: ($usartXen:ident, $usartXrst:ident, $usartXsw:ident),)+) => {
-//         $(
-//             unsafe impl Instance for $I2CX {
-//                 type APB = $APBX;
-//                 fn enable_clock(apbx: &mut APB) {
-//                     unimplemented!();
-//                     // apbx.enr().modify(|_, w| w.$i2cXen().enabled());
-//                     // apbx.rstr().modify(|_, w| w.$i2cXrst().reset());
-//                     // apbx.rstr().modify(|_, w| w.$i2cXrst().clear_bit());
-//                 }
+macro_rules! usart {
+    ($($USARTX:ident: ($usartXen:ident, $APB:ident, $pclkX:ident, $usartXrst:ident, $usartXsw:ident),)+) => {
+        $(
+            impl private::Sealed for $USARTX {}
+            impl Instance for $USARTX {
+                type APB = $APB;
+                fn enable_clock(apb: &mut Self::APB) {
+                    apb.enr().modify(|_, w| w.$usartXen().enabled());
+                    apb.rstr().modify(|_, w| w.$usartXrst().reset());
+                    apb.rstr().modify(|_, w| w.$usartXrst().clear_bit());
+                }
 
-//                 fn clock(clocks: &Clocks) -> Hertz {
-//                     unimplemented!();
-//                     // // NOTE(unsafe) atomic read with no side effects
-//                     // match unsafe { (*RCC::ptr()).cfgr3.read().$i2cXsw().variant() } {
-//                     //     I2C1SW_A::HSI => Hertz(8_000_000),
-//                     //     I2C1SW_A::SYSCLK => clocks.sysclk(),
-//                     // }
-//                 }
-//             }
-//         )+
-//     };
+                fn clock(clocks: &Clocks) -> Hertz {
+                    // NOTE(unsafe) atomic read with no side effects
+                    match unsafe { (*RCC::ptr()).cfgr3.read().$usartXsw().variant() } {
+                        USART1SW_A::PCLK => clocks.$pclkX(),
+                        USART1SW_A::HSI => crate::rcc::HSI,
+                        USART1SW_A::SYSCLK => clocks.sysclk(),
+                        // TODO
+                        USART1SW_A::LSE => crate::unimplemented!(),
+                    }
+                }
+            }
+        )+
+    };
 
-//     ([ $($X:literal, $Y:literal),+ ]) => {
-//         paste::paste! {
-//             uart!(
-//                 $([<UART $X>], [<APB $Y>]: ([<uart $X en>], [<uart $X rst>], [<uart $X sw>]),)+
-//             );
-//         }
-//     };
-// }
+    ([ $(($X:literal, $APB:literal)),+ ]) => {
+        paste::paste! {
+            usart!(
+                $([<USART $X>]: ([<usart $X en>], [<APB $APB>], [<pclk $APB>], [<usart $X rst>], [<usart $X sw>]),)+
+            );
+        }
+    };
+}
 
-// uart!([(1,1)])
-
+usart!([(1,2)]);
+usart!([(2,1)]);
+usart!([(3,1)]);
 
 hal! {
     USART1: (usart1, APB2, usart1en, usart1rst, pclk2),
