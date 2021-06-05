@@ -11,7 +11,7 @@ so that one one pin can confirm the correct behavior of the other pin and the un
 peripheral.
 */
 #![no_std]
-#![no_main]
+#![cfg_attr(test, no_main)]
 
 use defmt_rtt as _;
 use panic_probe as _;
