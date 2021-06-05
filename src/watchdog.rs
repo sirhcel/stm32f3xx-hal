@@ -4,14 +4,13 @@
 //!
 //! [examples/can.rs]: https://github.com/stm32-rs/stm32f3xx-hal/blob/v0.6.1/examples/can.rs
 
-use defmt::info;
 use embedded_time::fixed_point::FixedPoint;
 
 use crate::hal::watchdog::{Watchdog, WatchdogEnable};
 
 use crate::pac::{iwdg::pr::PR_A, DBGMCU, IWDG};
 use crate::time::duration::Milliseconds;
-use crate::time::rate::{Hertz, Kilohertz};
+use crate::time::rate::Kilohertz;
 
 /// Frequency of the watchdog peripheral clock
 const LSI: Kilohertz = Kilohertz(40);
@@ -96,8 +95,6 @@ impl IndependentWatchDog {
 
         let psc = self.iwdg.pr.read().pr().variant();
         let reload = self.iwdg.rlr.read().rl().bits();
-
-        use core::convert::TryFrom;
 
         Milliseconds((into_division_value(psc) * u32::from(reload)) / LSI.integer())
     }
