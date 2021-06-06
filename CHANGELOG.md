@@ -70,6 +70,7 @@ let clocks = rcc
 - Remove `stm32` module. Use `use stm32f3xx_hal::pac` instead.
   This module was a deprecated in [v0.5.0][] and is now subject for
   removal. ([#220])
+- `Serial::uart1` ... functions are renamed to `Serial::new`. ([#212])
 
 ## [v0.6.1] - 2020-12-10
 
@@ -329,6 +330,8 @@ let clocks = rcc
 [#220]: https://github.com/stm32-rs/stm32f3xx-hal/pull/220
 [#217]: https://github.com/stm32-rs/stm32f3xx-hal/pull/217
 [#216]: https://github.com/stm32-rs/stm32f3xx-hal/pull/216
+[#212]: https://github.com/stm32-rs/stm32f3xx-hal/pull/212
+[#211]: https://github.com/stm32-rs/stm32f3xx-hal/pull/211
 [#210]: https://github.com/stm32-rs/stm32f3xx-hal/pull/210
 [#208]: https://github.com/stm32-rs/stm32f3xx-hal/pull/208
 [#203]: https://github.com/stm32-rs/stm32f3xx-hal/issues/203

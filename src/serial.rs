@@ -291,7 +291,6 @@ impl<USART, TX, RX> serial::Write<u8> for Serial<USART, (TX, RX)>
     }
 }
 
-// TODO: impl serial::Write | Read for UART without split
 impl<USART> serial::Write<u8> for Tx<USART>
     where USART: Instance
 {
