@@ -339,6 +339,7 @@ macro_rules! adc_hal {
                     this_adc
                 }
 
+                /// Releases the ADC peripheral and associated pins
                 pub fn free(mut self) -> $ADC {
                     self.disable();
                     self.rb
