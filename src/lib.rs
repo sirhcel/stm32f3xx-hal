@@ -160,7 +160,7 @@ pub mod watchdog;
 
 cfg_if! {
     if #[cfg(feature = "defmt")] {
-        pub(crate) use defmt::{assert, panic, unreachable, unwrap};
+        pub(crate) use defmt::{assert, panic, unreachable, unwrap, unimplemented};
         pub(crate) use macros::expect;
 
         mod macros {
@@ -176,7 +176,7 @@ cfg_if! {
             pub(crate) use expect_wrapper as expect;
         }
     } else {
-        pub(crate) use core::{assert, panic, unreachable};
+        pub(crate) use core::{assert, panic, unreachable, unimplemented};
         pub(crate) use macros::{unwrap, expect};
 
         mod macros {
