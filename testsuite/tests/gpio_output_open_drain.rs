@@ -14,7 +14,6 @@ struct State {
 
 #[defmt_test::tests]
 mod tests {
-    use super::*;
     use defmt::{assert, unwrap};
     use stm32f3xx_hal::{pac, prelude::*};
     use testsuite::GenericPair;
