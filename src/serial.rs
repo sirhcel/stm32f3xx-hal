@@ -96,28 +96,23 @@ pub struct Serial<Usart, Pins> {
 }
 
 mod split {
-    use super::{Instance, RxPin, TxPin};
+    use super::Instance;
     /// Serial receiver
-    pub struct Rx<Usart, Pin> {
+    pub struct Rx<Usart> {
         usart: Usart,
-        pin: Pin,
+        // pin: *const dyn RxPin<Usart>,
     }
 
     /// Serial transmitter
-    pub struct Tx<Usart, Pin> {
+    pub struct Tx<Usart> {
         usart: Usart,
-        pin: Pin,
+        // pin: *const dyn TxPin<Usart>,
     }
 
-    impl<Usart, Pin> Tx<Usart, Pin>
-    where
-        Usart: Instance,
-        Pin: TxPin<Usart>,
-        {
-        pub(crate) fn new(usart: Usart, pin: Pin) -> Self {
+    impl<Usart> Tx<Usart> where Usart: Instance {
+        pub(crate) fn new(usart: Usart) -> Self {
             Tx {
-                usart,
-                pin,
+                usart
             }
         }
 
@@ -130,15 +125,10 @@ mod split {
         }
     }
 
-    impl<Usart, Pin> Rx<Usart, Pin>
-    where
-        Usart: Instance,
-        Pin: RxPin<Usart>,
-    {
-        pub(crate) fn new(usart: Usart, pin: Pin) -> Self {
+    impl<Usart> Rx<Usart> where Usart: Instance {
+        pub(crate) fn new(usart: Usart) -> Self {
             Rx {
-                usart,
-                pin,
+                usart
             }
         }
 
@@ -154,22 +144,22 @@ mod split {
 
 pub use split::{Tx, Rx};
 
-impl<Usart, Tx, Rx> Serial<Usart, (Tx, Rx)>
+impl<Usart, TX, RX> Serial<Usart, (TX, RX)>
 where
     Usart: Instance,
 {
     /// Configures a USART peripheral to provide serial communication
     pub fn new(
         usart: Usart,
-        pins: (Tx, Rx),
+        pins: (TX, RX),
         baud_rate: Baud,
         clocks: Clocks,
         apb: &mut <Usart as Instance>::APB,
     ) -> Self
     where
         Usart: Instance,
-        Tx: TxPin<Usart>,
-        Rx: RxPin<Usart>,
+        TX: TxPin<Usart>,
+        RX: RxPin<Usart>,
     {
         Usart::enable_clock(apb);
 
@@ -202,22 +192,18 @@ where
         }
     }
 
-    // /// Rejoins split Serial peripheral
-    // pub fn join<PinTx, PinRx>(tx: Tx<Usart, PinTx> , rx: Rx<Usart, PinRx>) -> Self
-    // where PinTx: TxPin<Usart>, PinRx: RxPin<Usart> {
-    //     Self {
-    //         usart: tx.usart,
-    //         pins: (tx.pin, rx.pin),
-    //     }
+    // /// Releases the USART peripheral and associated pins
+    // pub fn join(tx: Tx<USARTX> , rx: Rx<USARTX>) -> Self {
+    //     unimplemented!();
     // }
 
     /// Releases the USART peripheral and associated pins
-    pub fn free(self) -> (Usart, (Tx, Rx)) {
+    pub fn free(self) -> (Usart, (TX, RX)) {
         (self.usart, self.pins)
     }
 }
 
-impl<Usart, Tx, Rx> serial::Read<u8> for Serial<Usart, (Tx, Rx)> where Usart: Instance {
+impl<Usart, TX, RX> serial::Read<u8> for Serial<Usart, (TX, RX)> where Usart: Instance {
     type Error = Error;
     fn read(&mut self) -> nb::Result<u8, Error> {
         let isr = self.usart.isr.read();
@@ -242,10 +228,9 @@ impl<Usart, Tx, Rx> serial::Read<u8> for Serial<Usart, (Tx, Rx)> where Usart: In
     }
 }
 
-impl<Usart, Pin> serial::Read<u8> for Rx<Usart, Pin>
+impl<Usart> serial::Read<u8> for Rx<Usart>
 where
     Usart: Instance,
-    Pin: RxPin<Usart>,
 {
     type Error = Error;
 
@@ -276,7 +261,7 @@ where
     }
 }
 
-impl<Usart, Tx, Rx> serial::Write<u8> for Serial<Usart, (Tx, Rx)>
+impl<Usart, TX, RX> serial::Write<u8> for Serial<Usart, (TX, RX)>
     where Usart: Instance
 {
     // NOTE(Infallible) See section "29.7 USART interrupts"; the only possible errors during
@@ -303,12 +288,10 @@ impl<Usart, Tx, Rx> serial::Write<u8> for Serial<Usart, (Tx, Rx)>
     }
 }
 
-impl<Usart, Tx, Rx> blocking::serial::write::Default<u8> for Serial<Usart, (Tx, Rx)> where Usart: Instance {}
+impl<Usart, TX, RX> blocking::serial::write::Default<u8> for Serial<Usart, (TX, RX)> where Usart: Instance {}
 
-impl<Usart, Pin> serial::Write<u8> for Tx<Usart, Pin>
-    where
-    Usart: Instance,
-    Pin: TxPin<Usart>,
+impl<Usart> serial::Write<u8> for Tx<Usart>
+    where Usart: Instance
 {
     // NOTE(Infallible) See section "29.7 USART interrupts"; the only possible errors during
     // transmission are: clear to send (which is disabled in this case) errors and
@@ -342,7 +325,7 @@ impl<Usart, Pin> serial::Write<u8> for Tx<Usart, Pin>
 
 
 #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-impl<Usart, Pin> Rx<Usart, Pin> where Usart: Instance, Pin: RxPin<Usart> {
+impl<Usart> Rx<Usart> where Usart: Instance {
     /// Fill the buffer with received data using DMA.
     pub fn read_exact<B, C>(
         self,
@@ -361,10 +344,10 @@ impl<Usart, Pin> Rx<Usart, Pin> where Usart: Instance, Pin: RxPin<Usart> {
     }
 }
 
-// impl<Usart, Pin> blocking::serial::write::Default<u8> for Tx<Usart, Pin> where Usart: Instance, Pin: RxPin<Usart> {}
+impl<Usart> blocking::serial::write::Default<u8> for Tx<Usart> where Usart: Instance {}
 
 #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-impl<Usart, Pin> Tx<Usart, Pin> where Usart: Instance, Pin: TxPin<Usart> {
+impl<Usart> Tx<Usart> where Usart: Instance {
     /// Transmit all data in the buffer using DMA.
     pub fn write_all<B, C>(
         self,
@@ -384,7 +367,7 @@ impl<Usart, Pin> Tx<Usart, Pin> where Usart: Instance, Pin: TxPin<Usart> {
 }
 
 #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-impl<Usart, Pin> dma::Target for Rx<Usart, Pin> where Usart: Instance, Pin: RxPin<Usart> {
+impl<Usart> dma::Target for Rx<Usart> where Usart: Instance {
     fn enable_dma(&mut self) {
         // NOTE(unsafe) critical section prevents races
         interrupt::free(|_| unsafe {
@@ -401,7 +384,7 @@ impl<Usart, Pin> dma::Target for Rx<Usart, Pin> where Usart: Instance, Pin: RxPi
 }
 
 #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-impl<Usart, Pin> dma::Target for Tx<Usart, Pin> where Usart: Instance, Pin: TxPin<Usart> {
+impl<Usart> dma::Target for Tx<Usart> where Usart: Instance {
     fn enable_dma(&mut self) {
         // NOTE(unsafe) critical section prevents races
         interrupt::free(|_| unsafe {
@@ -456,9 +439,9 @@ macro_rules! usart {
             }
 
 
-            impl<Tx, Rx> Serial<$USARTX, (Tx, Rx)> {
+            impl<TX, RX> Serial<$USARTX, (TX, RX)> {
                 /// Splits the `Serial` abstraction into a transmitter and a receiver half
-                pub fn split(self) -> (Tx<$USARTX, impl TxPin>, Rx<$USARTX, impl RxPin>) {
+                pub fn split(self) -> (Tx<$USARTX>, Rx<$USARTX>) {
                     // NOTE(unsafe): This essentially duplicates the USART peripheral
                     //
                     // As RX and TX both do have direct access to the peripheral,
@@ -474,7 +457,7 @@ macro_rules! usart {
                             pac::Peripherals::steal().$USARTX,
                         )
                     };
-                    (Tx::new(tx, self.pins.0), Rx::new(rx, self.pins.1))
+                    (Tx::new(tx), Rx::new(rx))
                 }
             }
         )+
@@ -489,29 +472,6 @@ macro_rules! usart {
     };
 }
 
-impl<Tx, Rx, PinTx: TxPin<USART1>, PinRx: RxPin<USART1>> Serial<USART1, (Tx, Rx)>
-    {
-    /// Splits the `Serial` abstraction into a transmitter and a receiver half
-    pub fn split(self) -> (Tx, Rx) {
-        // NOTE(unsafe): This essentially duplicates the USART peripheral
-        //
-        // As RX and TX both do have direct access to the peripheral,
-        // they must guarantee to only do atomic operations on the peripheral
-        // registers to avoid data races.
-        //
-        // Tx and Rx won't access the same registers anyways,
-        // as they have independet responbilities, which are NOT represented
-        // in the type system.
-        let (tx, rx) = unsafe {
-            (
-                pac::Peripherals::steal().USART1,
-                pac::Peripherals::steal().USART1,
-            )
-        };
-        (Tx::new(tx, self.pins.0), Rx::new(rx, self.pins.1))
-    }
-}
-
-// usart!([(1, 2)]);
-// usart!([(2, 1)]);
-// usart!([(3, 1)]);
+usart!([(1, 2)]);
+usart!([(2, 1)]);
+usart!([(3, 1)]);

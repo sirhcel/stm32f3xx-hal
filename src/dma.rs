@@ -553,19 +553,17 @@ pub unsafe trait OnChannel<C: Channel>: Target {}
 macro_rules! on_channel {
     (
         $dma:ident,
-        $( ( $serial:ty, $usart:ty, $pin:ty ) => $C:ident, )+
+        $( $target:ty => $C:ident, )+
     ) => {
-        $( unsafe impl<Pin> OnChannel<$dma::$C> for $serial<$usart, Pin> where Pin: $pin {} )+
+        $( unsafe impl OnChannel<$dma::$C> for $target {} )+
     };
 }
 
-use crate::serial::{TxPin, RxPin};
-
-// on_channel!(dma1,
-//     serial::Rx<pac::USART1, RxPin> => C5,
-//     serial::Tx<pac::USART1, TxPin> => C4,
-//     serial::Rx<pac::USART2, RxPin> => C6,
-//     serial::Tx<pac::USART2, TxPin> => C7,
-//     serial::Rx<pac::USART3, RxPin> => C3,
-//     serial::Tx<pac::USART3, TxPin> => C2,
-// );
+on_channel!(dma1,
+    serial::Rx<pac::USART1> => C5,
+    serial::Tx<pac::USART1> => C4,
+    serial::Rx<pac::USART2> => C6,
+    serial::Tx<pac::USART2> => C7,
+    serial::Rx<pac::USART3> => C3,
+    serial::Tx<pac::USART3> => C2,
+);
