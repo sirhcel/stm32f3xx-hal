@@ -93,9 +93,9 @@ cfg_if! {
 }
 
 /// Serial abstraction
-pub struct Serial<Usart, PINS> {
+pub struct Serial<Usart, Pins> {
     usart: Usart,
-    pins: PINS,
+    pins: Pins,
 }
 
 mod split {
