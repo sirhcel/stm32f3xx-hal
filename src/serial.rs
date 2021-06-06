@@ -210,7 +210,8 @@ where
     }
 }
 
-impl<Usart, TX, RX> serial::Read<u8> for Serial<Usart, (TX, RX)> where Usart: Instance {
+// TODO: Check if u16 for WORD is feasiable / possible
+impl<Usart, Tx, Rx> serial::Read<u8> for Serial<Usart, (Tx, Rx)> where Usart: Instance {
     type Error = Error;
     fn read(&mut self) -> nb::Result<u8, Error> {
         let isr = self.usart.isr.read();
@@ -268,7 +269,7 @@ where
     }
 }
 
-impl<Usart, TX, RX> serial::Write<u8> for Serial<Usart, (TX, RX)>
+impl<Usart, Tx, Rx> serial::Write<u8> for Serial<Usart, (Tx, Rx)>
     where Usart: Instance
 {
     // NOTE(Infallible) See section "29.7 USART interrupts"; the only possible errors during
@@ -295,7 +296,7 @@ impl<Usart, TX, RX> serial::Write<u8> for Serial<Usart, (TX, RX)>
     }
 }
 
-impl<Usart, TX, RX> blocking::serial::write::Default<u8> for Serial<Usart, (TX, RX)> where Usart: Instance {}
+impl<Usart, Tx, Rx> blocking::serial::write::Default<u8> for Serial<Usart, (Tx, Rx)> where Usart: Instance {}
 
 impl<Usart> serial::Write<u8> for Tx<Usart>
     where Usart: Instance
