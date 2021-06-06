@@ -146,22 +146,22 @@ mod split {
 
 pub use split::{Tx, Rx};
 
-impl<Usart, TX, RX> Serial<Usart, (TX, RX)>
+impl<Usart, Tx, Rx> Serial<Usart, (Tx, Rx)>
 where
     Usart: Instance,
 {
     /// Configures a USART peripheral to provide serial communication
     pub fn new(
         usart: Usart,
-        pins: (TX, RX),
+        pins: (Tx, Rx),
         baud_rate: Baud,
         clocks: Clocks,
         apb: &mut <Usart as Instance>::APB,
     ) -> Self
     where
         Usart: Instance,
-        TX: TxPin<Usart>,
-        RX: RxPin<Usart>,
+        Tx: TxPin<Usart>,
+        Rx: RxPin<Usart>,
     {
         Usart::enable_clock(apb);
 
@@ -202,7 +202,7 @@ where
     // }
 
     /// Releases the USART peripheral and associated pins
-    pub fn free(self) -> (Usart, (TX, RX)) {
+    pub fn free(self) -> (Usart, (Tx, Rx)) {
         self.usart.cr1.modify(|_, w| {
             w.ue().disabled().re().disabled().te().disabled()
         });
@@ -446,7 +446,7 @@ macro_rules! usart {
             }
 
 
-            impl<TX, RX> Serial<$USARTX, (TX, RX)> {
+            impl<Tx, Rx> Serial<$USARTX, (Tx, Rx)> {
                 /// Splits the `Serial` abstraction into a transmitter and a receiver half
                 pub fn split(self) -> (Tx<$USARTX>, Rx<$USARTX>) {
                     // NOTE(unsafe): This essentially duplicates the USART peripheral
