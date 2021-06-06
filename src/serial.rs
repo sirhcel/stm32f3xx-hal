@@ -203,6 +203,9 @@ where
 
     /// Releases the USART peripheral and associated pins
     pub fn free(self) -> (Usart, (TX, RX)) {
+        self.usart.cr1.modify(|_, w| {
+            w.ue().disabled().re().disabled().te().disabled()
+        });
         (self.usart, self.pins)
     }
 }
