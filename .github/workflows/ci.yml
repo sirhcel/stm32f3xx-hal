@@ -95,11 +95,6 @@ jobs:
   build-testsuite:
     name: Build Testsuite
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        mcu:
-          - stm32f3xx-hal/stm32f303xc
-          - stm32f3xx-hal/stm32f303xd
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -110,7 +105,7 @@ jobs:
           profile: minimal
       - uses: actions-rs/cargo@v1
         command: test
-        args: -p testsuite --no-run --no-default-features --features=${{ matrix.mcu }}
+        args: -p testsuite --no-run
 
   clippy:
     name: Clippy
