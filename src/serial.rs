@@ -44,51 +44,50 @@ pub enum Error {
     Parity,
 }
 
-// FIXME these should be "closed" traits
-/// TX pin - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait TxPin<Usart> {}
+/// TX pin
+pub trait TxPin<Usart>: crate::private::Sealed {}
 
-/// RX pin - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait RxPin<Usart> {}
+/// RX pin
+pub trait RxPin<Usart>: crate::private::Sealed {}
 
-unsafe impl<Otype> TxPin<USART1> for gpioa::PA9<AF7<Otype>> {}
-unsafe impl<Otype> TxPin<USART1> for gpiob::PB6<AF7<Otype>> {}
-unsafe impl<Otype> TxPin<USART1> for gpioc::PC4<AF7<Otype>> {}
-unsafe impl<Otype> RxPin<USART1> for gpioa::PA10<AF7<Otype>> {}
-unsafe impl<Otype> RxPin<USART1> for gpiob::PB7<AF7<Otype>> {}
-unsafe impl<Otype> RxPin<USART1> for gpioc::PC5<AF7<Otype>> {}
+impl<Otype> TxPin<USART1> for gpioa::PA9<AF7<Otype>> {}
+impl<Otype> TxPin<USART1> for gpiob::PB6<AF7<Otype>> {}
+impl<Otype> TxPin<USART1> for gpioc::PC4<AF7<Otype>> {}
+impl<Otype> RxPin<USART1> for gpioa::PA10<AF7<Otype>> {}
+impl<Otype> RxPin<USART1> for gpiob::PB7<AF7<Otype>> {}
+impl<Otype> RxPin<USART1> for gpioc::PC5<AF7<Otype>> {}
 
-unsafe impl<Otype> TxPin<USART2> for gpioa::PA2<AF7<Otype>> {}
-unsafe impl<Otype> TxPin<USART2> for gpiob::PB3<AF7<Otype>> {}
-unsafe impl<Otype> RxPin<USART2> for gpioa::PA3<AF7<Otype>> {}
-unsafe impl<Otype> RxPin<USART2> for gpiob::PB4<AF7<Otype>> {}
+impl<Otype> TxPin<USART2> for gpioa::PA2<AF7<Otype>> {}
+impl<Otype> TxPin<USART2> for gpiob::PB3<AF7<Otype>> {}
+impl<Otype> RxPin<USART2> for gpioa::PA3<AF7<Otype>> {}
+impl<Otype> RxPin<USART2> for gpiob::PB4<AF7<Otype>> {}
 
-unsafe impl<Otype> TxPin<USART3> for gpiob::PB10<AF7<Otype>> {}
-unsafe impl<Otype> TxPin<USART3> for gpioc::PC10<AF7<Otype>> {}
-unsafe impl<Otype> RxPin<USART3> for gpioc::PC11<AF7<Otype>> {}
+impl<Otype> TxPin<USART3> for gpiob::PB10<AF7<Otype>> {}
+impl<Otype> TxPin<USART3> for gpioc::PC10<AF7<Otype>> {}
+impl<Otype> RxPin<USART3> for gpioc::PC11<AF7<Otype>> {}
 
 cfg_if! {
     if #[cfg(any(feature = "gpio-f303", feature = "gpio-f303e", feature = "gpio-f373"))] {
         use crate::gpio::{gpiod, gpioe};
 
-        unsafe impl<Otype> TxPin<USART1> for gpioe::PE0<AF7<Otype>> {}
-        unsafe impl<Otype> RxPin<USART1> for gpioe::PE1<AF7<Otype>> {}
+        impl<Otype> TxPin<USART1> for gpioe::PE0<AF7<Otype>> {}
+        impl<Otype> RxPin<USART1> for gpioe::PE1<AF7<Otype>> {}
 
-        unsafe impl<Otype> TxPin<USART2> for gpiod::PD5<AF7<Otype>> {}
-        unsafe impl<Otype> RxPin<USART2> for gpiod::PD6<AF7<Otype>> {}
+        impl<Otype> TxPin<USART2> for gpiod::PD5<AF7<Otype>> {}
+        impl<Otype> RxPin<USART2> for gpiod::PD6<AF7<Otype>> {}
 
-        unsafe impl<Otype> TxPin<USART3> for gpiod::PD8<AF7<Otype>> {}
-        unsafe impl<Otype> RxPin<USART3> for gpiod::PD9<AF7<Otype>> {}
-        unsafe impl<Otype> RxPin<USART3> for gpioe::PE15<AF7<Otype>> {}
+        impl<Otype> TxPin<USART3> for gpiod::PD8<AF7<Otype>> {}
+        impl<Otype> RxPin<USART3> for gpiod::PD9<AF7<Otype>> {}
+        impl<Otype> RxPin<USART3> for gpioe::PE15<AF7<Otype>> {}
     }
 }
 
 cfg_if! {
     if #[cfg(not(feature = "gpio-f373"))] {
-        unsafe impl<Otype> TxPin<USART2> for gpioa::PA14<AF7<Otype>> {}
-        unsafe impl<Otype> RxPin<USART2> for gpioa::PA15<AF7<Otype>> {}
+        impl<Otype> TxPin<USART2> for gpioa::PA14<AF7<Otype>> {}
+        impl<Otype> RxPin<USART2> for gpioa::PA15<AF7<Otype>> {}
 
-        unsafe impl<Otype> RxPin<USART3> for gpiob::PB11<AF7<Otype>> {}
+        impl<Otype> RxPin<USART3> for gpiob::PB11<AF7<Otype>> {}
     }
 }
 
