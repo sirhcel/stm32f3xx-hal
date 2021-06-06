@@ -206,7 +206,7 @@ where
     }
 }
 
-impl<USART, TX, RX> serial::Read<u8> for Serial<USART, (TX, RX)> where USART: Instance {
+impl<Usart, TX, RX> serial::Read<u8> for Serial<Usart, (TX, RX)> where Usart: Instance {
     type Error = Error;
     fn read(&mut self) -> nb::Result<u8, Error> {
         let isr = self.usart.isr.read();
@@ -264,8 +264,8 @@ where
     }
 }
 
-impl<USART, TX, RX> serial::Write<u8> for Serial<USART, (TX, RX)>
-    where USART: Instance
+impl<Usart, TX, RX> serial::Write<u8> for Serial<Usart, (TX, RX)>
+    where Usart: Instance
 {
     // NOTE(Infallible) See section "29.7 USART interrupts"; the only possible errors during
     // transmission are: clear to send (which is disabled in this case) errors and
@@ -291,7 +291,7 @@ impl<USART, TX, RX> serial::Write<u8> for Serial<USART, (TX, RX)>
     }
 }
 
-impl<USART, TX, RX> blocking::serial::write::Default<u8> for Serial<USART, (TX, RX)> where USART: Instance {}
+impl<Usart, TX, RX> blocking::serial::write::Default<u8> for Serial<Usart, (TX, RX)> where Usart: Instance {}
 
 impl<Usart> serial::Write<u8> for Tx<Usart>
     where Usart: Instance
