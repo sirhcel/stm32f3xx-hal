@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `ld` feature, which enables the memory.x generation ([#216])
 - Serial does now implement `embedded_hal::serial::{Read, Write}`. 
   No `split()` necessary. ([#212])
+- Serial can now listen for the `Idle` interrupt event ([#212])
 
 ### Changed
 
