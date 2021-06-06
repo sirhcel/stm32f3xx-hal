@@ -291,6 +291,8 @@ impl<USART, TX, RX> serial::Write<u8> for Serial<USART, (TX, RX)>
     }
 }
 
+impl<USART, TX, RX> blocking::serial::write::Default<u8> for Serial<USART, (TX, RX)> where USART: Instance {}
+
 impl<USART> serial::Write<u8> for Tx<USART>
     where USART: Instance
 {
