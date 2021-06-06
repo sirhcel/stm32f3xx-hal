@@ -449,7 +449,7 @@ macro_rules! usart {
 
             impl<Tx, Rx> Serial<$USARTX, (Tx, Rx)> {
                 /// Splits the `Serial` abstraction into a transmitter and a receiver half
-                pub fn split(self) -> (Tx<$USARTX>, Rx<$USARTX>) {
+                pub fn split(self) -> (split::Tx<$USARTX>, split::Rx<$USARTX>) {
                     // NOTE(unsafe): This essentially duplicates the USART peripheral
                     //
                     // As RX and TX both do have direct access to the peripheral,
@@ -465,7 +465,7 @@ macro_rules! usart {
                             pac::Peripherals::steal().$USARTX,
                         )
                     };
-                    (Tx::new(tx), Rx::new(rx))
+                    (split::Tx::new(tx), split::Rx::new(rx))
                 }
             }
         )+
