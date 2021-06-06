@@ -10,8 +10,6 @@ use crate::{
     time::rate::*,
 };
 
-// use crate::pac::{usart1, usart2, usart3};
-
 use cfg_if::cfg_if;
 
 cfg_if! {
