@@ -1,6 +1,6 @@
 //! Serial
 
-use core::{convert::Infallible, marker::PhantomData, ops::Deref, ptr};
+use core::{convert::Infallible, ops::Deref};
 
 use crate::{
     gpio::{gpioa, gpiob, gpioc, AF7},
