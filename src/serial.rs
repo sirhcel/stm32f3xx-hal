@@ -46,10 +46,10 @@ pub enum Error {
 
 // FIXME these should be "closed" traits
 /// TX pin - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait TxPin<USART> {}
+pub unsafe trait TxPin<Usart> {}
 
 /// RX pin - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait RxPin<USART> {}
+pub unsafe trait RxPin<Usart> {}
 
 unsafe impl<Otype> TxPin<USART1> for gpioa::PA9<AF7<Otype>> {}
 unsafe impl<Otype> TxPin<USART1> for gpiob::PB6<AF7<Otype>> {}
@@ -93,53 +93,53 @@ cfg_if! {
 }
 
 /// Serial abstraction
-pub struct Serial<USART, PINS> {
-    usart: USART,
+pub struct Serial<Usart, PINS> {
+    usart: Usart,
     pins: PINS,
 }
 
 mod split {
     use super::Instance;
     /// Serial receiver
-    pub struct Rx<USART> {
-        usart: USART,
-        // pin: *const dyn RxPin<USART>,
+    pub struct Rx<Usart> {
+        usart: Usart,
+        // pin: *const dyn RxPin<Usart>,
     }
 
     /// Serial transmitter
-    pub struct Tx<USART> {
-        usart: USART,
-        // pin: *const dyn TxPin<USART>,
+    pub struct Tx<Usart> {
+        usart: Usart,
+        // pin: *const dyn TxPin<Usart>,
     }
 
-    impl<USART> Tx<USART> where USART: Instance {
-        pub(crate) fn new(usart: USART) -> Self {
+    impl<Usart> Tx<Usart> where Usart: Instance {
+        pub(crate) fn new(usart: Usart) -> Self {
             Tx {
                 usart
             }
         }
 
-        pub(crate) unsafe fn usart_mut(&mut self) -> &mut USART {
+        pub(crate) unsafe fn usart_mut(&mut self) -> &mut Usart {
             &mut self.usart
         }
 
-        pub(crate) unsafe fn usart(&self) -> &USART {
+        pub(crate) unsafe fn usart(&self) -> &Usart {
             &self.usart
         }
     }
 
-    impl<USART> Rx<USART> where USART: Instance {
-        pub(crate) fn new(usart: USART) -> Self {
+    impl<Usart> Rx<Usart> where Usart: Instance {
+        pub(crate) fn new(usart: Usart) -> Self {
             Rx {
                 usart
             }
         }
 
-        pub(crate) unsafe fn usart_mut(&mut self) -> &mut USART {
+        pub(crate) unsafe fn usart_mut(&mut self) -> &mut Usart {
             &mut self.usart
         }
 
-        pub(crate) unsafe fn usart(&self) -> &USART {
+        pub(crate) unsafe fn usart(&self) -> &Usart {
             &self.usart
         }
     }
@@ -147,26 +147,26 @@ mod split {
 
 pub use split::{Tx, Rx};
 
-impl<USART, TX, RX> Serial<USART, (TX, RX)>
+impl<Usart, TX, RX> Serial<Usart, (TX, RX)>
 where
-    USART: Instance,
+    Usart: Instance,
 {
     /// Configures a USART peripheral to provide serial communication
     pub fn new(
-        usart: USART,
+        usart: Usart,
         pins: (TX, RX),
         baud_rate: Baud,
         clocks: Clocks,
-        apb: &mut <USART as Instance>::APB,
+        apb: &mut <Usart as Instance>::APB,
     ) -> Self
     where
-        USART: Instance,
-        TX: TxPin<USART>,
-        RX: RxPin<USART>,
+        Usart: Instance,
+        TX: TxPin<Usart>,
+        RX: RxPin<Usart>,
     {
-        USART::enable_clock(apb);
+        Usart::enable_clock(apb);
 
-        let brr = USART::clock(&clocks).integer() / baud_rate.integer();
+        let brr = Usart::clock(&clocks).integer() / baud_rate.integer();
         crate::assert!(brr >= 16, "impossible baud rate");
         usart.brr.write(|w| w.brr().bits(brr as u16) );
 
@@ -201,7 +201,7 @@ where
     // }
 
     /// Releases the USART peripheral and associated pins
-    pub fn free(self) -> (USART, (TX, RX)) {
+    pub fn free(self) -> (Usart, (TX, RX)) {
         (self.usart, self.pins)
     }
 }
@@ -231,9 +231,9 @@ impl<USART, TX, RX> serial::Read<u8> for Serial<USART, (TX, RX)> where USART: In
     }
 }
 
-impl<USART> serial::Read<u8> for Rx<USART>
+impl<Usart> serial::Read<u8> for Rx<Usart>
 where
-    USART: Instance,
+    Usart: Instance,
 {
     type Error = Error;
 
@@ -293,8 +293,8 @@ impl<USART, TX, RX> serial::Write<u8> for Serial<USART, (TX, RX)>
 
 impl<USART, TX, RX> blocking::serial::write::Default<u8> for Serial<USART, (TX, RX)> where USART: Instance {}
 
-impl<USART> serial::Write<u8> for Tx<USART>
-    where USART: Instance
+impl<Usart> serial::Write<u8> for Tx<Usart>
+    where Usart: Instance
 {
     // NOTE(Infallible) See section "29.7 USART interrupts"; the only possible errors during
     // transmission are: clear to send (which is disabled in this case) errors and
@@ -328,7 +328,7 @@ impl<USART> serial::Write<u8> for Tx<USART>
 
 
 #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-impl<USART> Rx<USART> where USART: Instance {
+impl<Usart> Rx<Usart> where Usart: Instance {
     /// Fill the buffer with received data using DMA.
     pub fn read_exact<B, C>(
         self,
@@ -347,10 +347,10 @@ impl<USART> Rx<USART> where USART: Instance {
     }
 }
 
-impl<USART> blocking::serial::write::Default<u8> for Tx<USART> where USART: Instance {}
+impl<Usart> blocking::serial::write::Default<u8> for Tx<Usart> where Usart: Instance {}
 
 #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-impl<USART> Tx<USART> where USART: Instance {
+impl<Usart> Tx<Usart> where Usart: Instance {
     /// Transmit all data in the buffer using DMA.
     pub fn write_all<B, C>(
         self,
@@ -370,7 +370,7 @@ impl<USART> Tx<USART> where USART: Instance {
 }
 
 #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-impl<USART> dma::Target for Rx<USART> where USART: Instance {
+impl<Usart> dma::Target for Rx<Usart> where Usart: Instance {
     fn enable_dma(&mut self) {
         // NOTE(unsafe) critical section prevents races
         interrupt::free(|_| unsafe {
@@ -387,7 +387,7 @@ impl<USART> dma::Target for Rx<USART> where USART: Instance {
 }
 
 #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-impl<USART> dma::Target for Tx<USART> where USART: Instance {
+impl<Usart> dma::Target for Tx<Usart> where Usart: Instance {
     fn enable_dma(&mut self) {
         // NOTE(unsafe) critical section prevents races
         interrupt::free(|_| unsafe {
