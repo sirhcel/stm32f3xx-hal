@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Support for GPIO output slew rate configuration ([#189])
 - Support for GPIO interrupts ([#189])
 - `ld` feature, which enables the memory.x generation ([#216])
+- Serial does now implement `embedded_hal::serial::{Read, Write}`. 
+  No `split()` necessary. ([#212])
 
 ### Changed
 

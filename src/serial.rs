@@ -206,6 +206,31 @@ where
     }
 }
 
+impl<USART, TX, RX> serial::Read<u8> for Serial<USART, (TX, RX)> where USART: Instance {
+    type Error = Error;
+    fn read(&mut self) -> nb::Result<u8, Error> {
+        let isr = self.usart.isr.read();
+
+        Err(if isr.pe().bit_is_set() {
+            self.usart.icr.write(|w| w.pecf().clear());
+            nb::Error::Other(Error::Parity)
+        } else if isr.fe().bit_is_set() {
+            self.usart.icr.write(|w| w.fecf().clear());
+            nb::Error::Other(Error::Framing)
+        } else if isr.nf().bit_is_set() {
+            self.usart.icr.write(|w| w.ncf().clear());
+            nb::Error::Other(Error::Noise)
+        } else if isr.ore().bit_is_set() {
+            self.usart.icr.write(|w| w.orecf().clear());
+            nb::Error::Other(Error::Overrun)
+        } else if isr.rxne().bit_is_set() {
+            return Ok(self.usart.rdr.read().bits() as u8);
+        } else {
+            nb::Error::WouldBlock
+        })
+    }
+}
+
 impl<USART> serial::Read<u8> for Rx<USART>
 where
     USART: Instance,
@@ -236,6 +261,33 @@ where
         } else {
             nb::Error::WouldBlock
         })
+    }
+}
+
+impl<USART, TX, RX> serial::Write<u8> for Serial<USART, (TX, RX)>
+    where USART: Instance
+{
+    // NOTE(Infallible) See section "29.7 USART interrupts"; the only possible errors during
+    // transmission are: clear to send (which is disabled in this case) errors and
+    // framing errors (which only occur in SmartCard mode); neither of these apply to
+    // our hardware configuration
+    type Error = Infallible;
+
+    fn flush(&mut self) -> nb::Result<(), Infallible> {
+        if self.usart.isr.read().tc().bit_is_set() {
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+
+    fn write(&mut self, byte: u8) -> nb::Result<(), Infallible> {
+        if self.usart.isr.read().txe().bit_is_set() {
+            self.usart.tdr.write(|w| unsafe { w.tdr().bits(u16::from(byte)) });
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
     }
 }
 
