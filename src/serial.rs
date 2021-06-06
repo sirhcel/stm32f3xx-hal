@@ -347,25 +347,25 @@ impl<USART> Rx<USART> where USART: Instance {
 
 impl<USART> blocking::serial::write::Default<u8> for Tx<USART> where USART: Instance {}
 
- #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
- impl<USART> Tx<USART> where USART: Instance {
-     /// Transmit all data in the buffer using DMA.
-     pub fn write_all<B, C>(
-         self,
-         buffer: B,
-         mut channel: C
-     ) -> dma::Transfer<B, C, Self>
-     where
-         Self: dma::OnChannel<C>,
-         B: dma::ReadBuffer<Word = u8> + 'static,
-         C: dma::Channel,
-     {
-         // NOTE(unsafe) usage of a valid peripheral address
-         unsafe { channel.set_peripheral_address(&self.usart().tdr as *const _ as u32, dma::Increment::Disable) };
+#[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
+impl<USART> Tx<USART> where USART: Instance {
+    /// Transmit all data in the buffer using DMA.
+    pub fn write_all<B, C>(
+        self,
+        buffer: B,
+        mut channel: C
+    ) -> dma::Transfer<B, C, Self>
+    where
+        Self: dma::OnChannel<C>,
+        B: dma::ReadBuffer<Word = u8> + 'static,
+        C: dma::Channel,
+    {
+        // NOTE(unsafe) usage of a valid peripheral address
+        unsafe { channel.set_peripheral_address(&self.usart().tdr as *const _ as u32, dma::Increment::Disable) };
 
-         dma::Transfer::start_read(buffer, channel, self)
-     }
- }
+        dma::Transfer::start_read(buffer, channel, self)
+    }
+}
 
 #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
 impl<USART> dma::Target for Rx<USART> where USART: Instance {
