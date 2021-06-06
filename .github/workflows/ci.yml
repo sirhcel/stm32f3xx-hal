@@ -104,8 +104,9 @@ jobs:
           override: true
           profile: minimal
       - uses: actions-rs/cargo@v1
-        command: test
-        args: -p testsuite --no-run
+        with:
+          command: test
+          args: -p testsuite --no-run
 
   clippy:
     name: Clippy
