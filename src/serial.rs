@@ -98,22 +98,60 @@ pub struct Serial<USART, PINS> {
     pins: PINS,
 }
 
-/// Serial receiver
-pub struct Rx<USART> {
-    usart: USART,
-    // pin: *const dyn RxPin<USART>,
+mod split {
+    use super::Instance;
+    /// Serial receiver
+    pub struct Rx<USART> {
+        usart: USART,
+        // pin: *const dyn RxPin<USART>,
+    }
+
+    /// Serial transmitter
+    pub struct Tx<USART> {
+        usart: USART,
+        // pin: *const dyn TxPin<USART>,
+    }
+
+    impl<USART> Tx<USART> where USART: Instance {
+        pub(crate) fn new(usart: USART) -> Self {
+            Tx {
+                usart
+            }
+        }
+
+        pub(crate) unsafe fn usart_mut(&mut self) -> &mut USART {
+            &mut self.usart
+        }
+
+        pub(crate) unsafe fn usart(&self) -> &USART {
+            &self.usart
+        }
+    }
+
+    impl<USART> Rx<USART> where USART: Instance {
+        pub(crate) fn new(usart: USART) -> Self {
+            Rx {
+                usart
+            }
+        }
+
+        pub(crate) unsafe fn usart_mut(&mut self) -> &mut USART {
+            &mut self.usart
+        }
+
+        pub(crate) unsafe fn usart(&self) -> &USART {
+            &self.usart
+        }
+    }
 }
 
-/// Serial transmitter
-pub struct Tx<USART> {
-    usart: USART,
-    // pin: *const dyn TxPin<USART>,
-}
+pub use split::{Tx, Rx};
 
 impl<USART, TX, RX> Serial<USART, (TX, RX)>
 where
     USART: Instance,
 {
+    /// Configures a USART peripheral to provide serial communication
     pub fn new(
         usart: USART,
         pins: (TX, RX),
@@ -130,8 +168,7 @@ where
 
         let brr = USART::clock(&clocks).integer() / baud_rate.integer();
         crate::assert!(brr >= 16, "impossible baud rate");
-        // NOTE(write): uses all bits of this register.
-        usart.brr.write(|w| unsafe { w.bits(brr) });
+        usart.brr.write(|w| w.brr().bits(brr as u16) );
 
         usart.cr1.modify(|_, w| {
             w.ue().enabled(); // enable USART
@@ -158,23 +195,6 @@ where
         }
     }
 
-    // /// Splits the `Serial` abstraction into a transmitter and a receiver half
-    // pub fn split(self) -> (Tx<USART>, Rx<USART>) {
-    //     let usart1 = unsafe {
-    //         *self.usart.deref()
-    //     };
-    //     (
-    //         Tx {
-    //             usart: self.usart,
-    //             // pin: self.pins.0,
-    //         },
-    //         Rx {
-    //             usart: usart1,
-    //             // pin: self.pins.1,
-    //         },
-    //     )
-    // }
-
     // /// Releases the USART peripheral and associated pins
     // pub fn join(tx: Tx<USARTX> , rx: Rx<USARTX>) -> Self {
     //     unimplemented!();
@@ -193,199 +213,140 @@ where
     type Error = Error;
 
     fn read(&mut self) -> nb::Result<u8, Error> {
-        let isr = self.usart.isr.read();
+        // NOTE(unsafe) atomic read with no side effects
+        let isr = unsafe { self.usart().isr.read() };
 
+        // NOTE(unsafe, write) write accessor for atomic writes with no side effects
+        let icr = unsafe { &self.usart_mut().icr };
         Err(if isr.pe().bit_is_set() {
-            self.usart.icr.write(|w| w.pecf().clear());
+            icr.write(|w| w.pecf().clear());
             nb::Error::Other(Error::Parity)
         } else if isr.fe().bit_is_set() {
-            self.usart.icr.write(|w| w.fecf().clear());
+            icr.write(|w| w.fecf().clear());
             nb::Error::Other(Error::Framing)
         } else if isr.nf().bit_is_set() {
-            self.usart.icr.write(|w| w.ncf().clear());
+            icr.write(|w| w.ncf().clear());
             nb::Error::Other(Error::Noise)
         } else if isr.ore().bit_is_set() {
-            self.usart.icr.write(|w| w.orecf().clear());
+            icr.write(|w| w.orecf().clear());
             nb::Error::Other(Error::Overrun)
         } else if isr.rxne().bit_is_set() {
-            return Ok(self.usart.rdr.read().bits() as u8);
+            // NOTE(unsafe) atomic read with no side effects
+            return Ok(unsafe { self.usart_mut().rdr.read().bits() as u8 });
         } else {
             nb::Error::WouldBlock
         })
     }
 }
 
-macro_rules! hal {
-    ($(
-        $USARTX:ident: ($usartX:ident, $APB:ident, $usartXen:ident, $usartXrst:ident, $pclkX:ident),
-    )+) => {
-        $(
-            impl<TX, RX> Serial<$USARTX, (TX, RX)> {
-                /// Configures a USART peripheral to provide serial communication
-                // TODO: change to new()
-                // TODO: Why is baudrate not enum?
-                // TODO: What about parity??
-                pub fn $usartX(
-                    usart: $USARTX,
-                    pins: (TX, RX),
-                    baud_rate: Baud,
-                    clocks: Clocks,
-                    apb: &mut $APB,
-                ) -> Self
-                where
-                    TX: TxPin<$USARTX>,
-                    RX: RxPin<$USARTX>,
-                {
-                    // enable or reset $USARTX
-                    apb.enr().modify(|_, w| w.$usartXen().set_bit());
-                    apb.rstr().modify(|_, w| w.$usartXrst().set_bit());
-                    apb.rstr().modify(|_, w| w.$usartXrst().clear_bit());
+// TODO: impl serial::Write | Read for UART without split
+impl<USART> serial::Write<u8> for Tx<USART>
+    where USART: Instance
+{
+    // NOTE(Infallible) See section "29.7 USART interrupts"; the only possible errors during
+    // transmission are: clear to send (which is disabled in this case) errors and
+    // framing errors (which only occur in SmartCard mode); neither of these apply to
+    // our hardware configuration
+    type Error = Infallible;
 
-                    let brr = clocks.$pclkX().0 / baud_rate.integer();
-                    crate::assert!(brr >= 16, "impossible baud rate");
-                    // NOTE(write): uses all bits of this register.
-                    usart.brr.write(|w| unsafe { w.bits(brr) });
+    fn flush(&mut self) -> nb::Result<(), Infallible> {
+        let isr = unsafe { self.usart_mut().isr.read() };
 
-                    usart.cr1.modify(|_, w| {
-                        w.ue().enabled();  // enable USART
-                        w.re().enabled();  // enable receiver
-                        w.te().enabled()   // enable transmitter
-                    });
+        if isr.tc().bit_is_set() {
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
 
-                    Self { usart, pins }
-                }
+    fn write(&mut self, byte: u8) -> nb::Result<(), Infallible> {
+        // NOTE(unsafe) atomic read with no side effects
+        let isr = unsafe { self.usart_mut().isr.read() };
 
-                // /// Releases the USART peripheral and associated pins
-                // pub fn join(tx: Tx<$USARTX> , rx: Rx<$USARTX>) -> Self {
-                //     unimplemented!();
-                // }
+        if isr.txe().bit_is_set() {
+            // NOTE(unsafe) atomic write to stateless register
+            unsafe { self.usart_mut().tdr.write(|w| w.tdr().bits(u16::from(byte))) };
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+}
 
-                // /// Releases the USART peripheral and associated pins
-                // pub fn free(self) -> ($USARTX, (TX, RX)) {
-                //     (self.usart, self.pins)
-                // }
-            }
 
-//             // TODO: impl serial::Write | Read for UART without split
-//             impl serial::Write<u8> for Tx<$USARTX> {
-//                 // NOTE(Infallible) See section "29.7 USART interrupts"; the only possible errors during
-//                 // transmission are: clear to send (which is disabled in this case) errors and
-//                 // framing errors (which only occur in SmartCard mode); neither of these apply to
-//                 // our hardware configuration
-//                 type Error = Infallible;
+#[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
+impl<USART> Rx<USART> where USART: Instance {
+    /// Fill the buffer with received data using DMA.
+    pub fn read_exact<B, C>(
+        self,
+        buffer: B,
+        mut channel: C
+    ) -> dma::Transfer<B, C, Self>
+    where
+        Self: dma::OnChannel<C>,
+        B: dma::WriteBuffer<Word = u8> + 'static,
+        C: dma::Channel,
+    {
+        // NOTE(unsafe) usage of a valid peripheral address
+        unsafe { channel.set_peripheral_address(&self.usart().rdr as *const _ as u32, dma::Increment::Disable) };
 
-//                 fn flush(&mut self) -> nb::Result<(), Infallible> {
-//                     // NOTE(unsafe) atomic read with no side effects
-//                     let isr = unsafe { (*$USARTX::ptr()).isr.read() };
+        dma::Transfer::start_write(buffer, channel, self)
+    }
+}
 
-//                     if isr.tc().bit_is_set() {
-//                         Ok(())
-//                     } else {
-//                         Err(nb::Error::WouldBlock)
-//                     }
-//                 }
+impl<USART> blocking::serial::write::Default<u8> for Tx<USART> where USART: Instance {}
 
-//                 fn write(&mut self, byte: u8) -> nb::Result<(), Infallible> {
-//                     // NOTE(unsafe) atomic read with no side effects
-//                     let isr = unsafe { (*$USARTX::ptr()).isr.read() };
+ #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
+ impl<USART> Tx<USART> where USART: Instance {
+     /// Transmit all data in the buffer using DMA.
+     pub fn write_all<B, C>(
+         self,
+         buffer: B,
+         mut channel: C
+     ) -> dma::Transfer<B, C, Self>
+     where
+         Self: dma::OnChannel<C>,
+         B: dma::ReadBuffer<Word = u8> + 'static,
+         C: dma::Channel,
+     {
+         // NOTE(unsafe) usage of a valid peripheral address
+         unsafe { channel.set_peripheral_address(&self.usart().tdr as *const _ as u32, dma::Increment::Disable) };
 
-//                     if isr.txe().bit_is_set() {
-//                         // NOTE(unsafe) atomic write to stateless register
-//                         // NOTE(write_volatile) 8-bit write that's not possible through the svd2rust API
-//                         unsafe {
-//                             ptr::write_volatile(&(*$USARTX::ptr()).tdr as *const _ as *mut _, byte)
-//                         }
-//                         Ok(())
-//                     } else {
-//                         Err(nb::Error::WouldBlock)
-//                     }
-//                 }
-//             }
+         dma::Transfer::start_read(buffer, channel, self)
+     }
+ }
 
-//             impl blocking::serial::write::Default<u8> for Tx<$USARTX> {}
+#[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
+impl<USART> dma::Target for Rx<USART> where USART: Instance {
+    fn enable_dma(&mut self) {
+        // NOTE(unsafe) critical section prevents races
+        interrupt::free(|_| unsafe {
+            self.usart_mut().cr3.modify(|_, w| w.dmar().enabled());
+        });
+    }
 
-//             #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-//             impl Rx<$USARTX> {
-//                 /// Fill the buffer with received data using DMA.
-//                 pub fn read_exact<B, C>(
-//                     self,
-//                     buffer: B,
-//                     mut channel: C
-//                 ) -> dma::Transfer<B, C, Self>
-//                 where
-//                     Self: dma::OnChannel<C>,
-//                     B: dma::WriteBuffer<Word = u8> + 'static,
-//                     C: dma::Channel,
-//                 {
-//                     // NOTE(unsafe) taking the address of a register
-//                     let pa = unsafe { &(*$USARTX::ptr()).rdr } as *const _ as u32;
-//                     // NOTE(unsafe) usage of a valid peripheral address
-//                     unsafe { channel.set_peripheral_address(pa, dma::Increment::Disable) };
+    fn disable_dma(&mut self) {
+        // NOTE(unsafe) critical section prevents races
+        interrupt::free(|_| unsafe {
+            self.usart_mut().cr3.modify(|_, w| w.dmar().disabled());
+        });
+    }
+}
 
-//                     dma::Transfer::start_write(buffer, channel, self)
-//                 }
-//             }
+#[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
+impl<USART> dma::Target for Tx<USART> where USART: Instance {
+    fn enable_dma(&mut self) {
+        // NOTE(unsafe) critical section prevents races
+        interrupt::free(|_| unsafe {
+            self.usart_mut().cr3.modify(|_, w| w.dmat().enabled());
+        });
+    }
 
-//             #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-//             impl Tx<$USARTX> {
-//                 /// Transmit all data in the buffer using DMA.
-//                 pub fn write_all<B, C>(
-//                     self,
-//                     buffer: B,
-//                     mut channel: C
-//                 ) -> dma::Transfer<B, C, Self>
-//                 where
-//                     Self: dma::OnChannel<C>,
-//                     B: dma::ReadBuffer<Word = u8> + 'static,
-//                     C: dma::Channel,
-//                 {
-//                     // NOTE(unsafe) taking the address of a register
-//                     let pa = unsafe { &(*$USARTX::ptr()).tdr } as *const _ as u32;
-//                     // NOTE(unsafe) usage of a valid peripheral address
-//                     unsafe { channel.set_peripheral_address(pa, dma::Increment::Disable) };
-
-//                     dma::Transfer::start_read(buffer, channel, self)
-//                 }
-//             }
-
-//             #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-//             impl dma::Target for Rx<$USARTX> {
-//                 fn enable_dma(&mut self) {
-//                     // NOTE(unsafe) critical section prevents races
-//                     interrupt::free(|_| unsafe {
-//                         let cr3 = &(*$USARTX::ptr()).cr3;
-//                         cr3.modify(|_, w| w.dmar().enabled());
-//                     });
-//                 }
-
-//                 fn disable_dma(&mut self) {
-//                     // NOTE(unsafe) critical section prevents races
-//                     interrupt::free(|_| unsafe {
-//                         let cr3 = &(*$USARTX::ptr()).cr3;
-//                         cr3.modify(|_, w| w.dmar().disabled());
-//                     });
-//                 }
-//             }
-
-//             #[cfg(any(feature = "stm32f302", feature = "stm32f303"))]
-//             impl dma::Target for Tx<$USARTX> {
-//                 fn enable_dma(&mut self) {
-//                     // NOTE(unsafe) critical section prevents races
-//                     interrupt::free(|_| unsafe {
-//                         let cr3 = &(*$USARTX::ptr()).cr3;
-//                         cr3.modify(|_, w| w.dmat().enabled());
-//                     });
-//                 }
-
-//                 fn disable_dma(&mut self) {
-//                     // NOTE(unsafe) critical section prevents races
-//                     interrupt::free(|_| unsafe {
-//                         let cr3 = &(*$USARTX::ptr()).cr3;
-//                         cr3.modify(|_, w| w.dmat().disabled());
-//                     });
-//                 }
-//             }
-        )+
+    fn disable_dma(&mut self) {
+        // NOTE(unsafe) critical section prevents races
+        interrupt::free(|_| unsafe {
+            self.usart_mut().cr3.modify(|_, w| w.dmat().disabled());
+        });
     }
 }
 
@@ -395,6 +356,7 @@ mod private {
 
 /// UART instance
 pub trait Instance: Deref<Target = RegisterBlock> + private::Sealed {
+    /// Peripheral bus instance which is responsible for the peripheral
     type APB;
     #[doc(hidden)]
     fn enable_clock(apb1: &mut Self::APB);
@@ -429,7 +391,7 @@ macro_rules! usart {
 
             impl<TX, RX> Serial<$USARTX, (TX, RX)> {
                 /// Splits the `Serial` abstraction into a transmitter and a receiver half
-                pub fn split<USART>(self) -> (Tx<$USARTX>, Rx<$USARTX>) {
+                pub fn split(self) -> (Tx<$USARTX>, Rx<$USARTX>) {
                     // NOTE(unsafe): This essentially duplicates the USART peripheral
                     //
                     // As RX and TX both do have direct access to the peripheral,
@@ -445,7 +407,7 @@ macro_rules! usart {
                             pac::Peripherals::steal().$USARTX,
                         )
                     };
-                    (Tx { usart: tx }, Rx { usart: rx })
+                    (Tx::new(tx), Rx::new(rx))
                 }
             }
         )+
@@ -463,9 +425,3 @@ macro_rules! usart {
 usart!([(1, 2)]);
 usart!([(2, 1)]);
 usart!([(3, 1)]);
-
-// hal! {
-//     USART1: (usart1, APB2, usart1en, usart1rst, pclk2),
-//     USART2: (usart2, APB1, usart2en, usart2rst, pclk1),
-//     USART3: (usart3, APB1, usart3en, usart3rst, pclk1),
-// }

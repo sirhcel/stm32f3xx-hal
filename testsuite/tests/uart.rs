@@ -69,21 +69,21 @@ mod tests {
         };
 
         super::State {
-            serial1: Some(Serial::usart1(
+            serial1: Some(Serial::new(
                 dp.USART1,
                 (serial_pair.0, serial_pair.1),
                 9600.Bd(),
                 clocks,
                 &mut rcc.apb2,
             )),
-            serial_slow: Some(Serial::usart2(
+            serial_slow: Some(Serial::new(
                 dp.USART2,
                 (cs_pair_1.0, cs_pair_2.1),
                 57600.Bd(),
                 clocks,
                 &mut rcc.apb1,
             )),
-            serial_fast: Some(Serial::usart3(
+            serial_fast: Some(Serial::new(
                 dp.USART3,
                 (cs_pair_2.0, cs_pair_1.1),
                 115200.Bd(),
