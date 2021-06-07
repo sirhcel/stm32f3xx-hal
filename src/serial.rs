@@ -5,7 +5,7 @@ use core::{convert::Infallible, ops::Deref};
 use crate::{
     gpio::{gpioa, gpiob, gpioc, AF7},
     hal::{blocking, serial},
-    pac::{self, rcc::cfgr3::USART1SW_A, usart1::RegisterBlock, RCC, USART1, USART2, USART3},
+    pac::{self, rcc::cfgr3::USART1SW_A, usart1::RegisterBlock, usart1::cr1::PCE_A, RCC, USART1, USART2, USART3},
     rcc::{Clocks, APB1, APB2},
     time::rate::*,
 };
@@ -145,6 +145,10 @@ mod split {
 }
 
 pub use split::{Tx, Rx};
+pub use crate::pac::usart1::{
+    cr1::PS_A as Parity,
+    cr2::STOP_A as StopBits,
+};
 
 impl<Usart, Tx, Rx> Serial<Usart, (Tx, Rx)>
 where
@@ -155,6 +159,8 @@ where
         usart: Usart,
         pins: (Tx, Rx),
         baud_rate: Baud,
+        parity: Option<Parity>,
+        stop_bits: StopBits,
         clocks: Clocks,
         apb: &mut <Usart as Instance>::APB,
     ) -> Self
@@ -168,6 +174,17 @@ where
         let brr = Usart::clock(&clocks).integer() / baud_rate.integer();
         crate::assert!(brr >= 16, "impossible baud rate");
         usart.brr.write(|w| w.brr().bits(brr as u16) );
+
+        if let Some(ps) = parity {
+            usart.cr1.modify(|_, w| {
+                w.ps().variant(ps);
+                w.pce().variant(PCE_A::ENABLED)
+            });
+        } else {
+            usart.cr1.modify(|_, w| w.pce().variant(PCE_A::DISABLED));
+        }
+
+        usart.cr2.modify(|_, w| w.stop().variant(stop_bits));
 
         usart.cr1.modify(|_, w| {
             w.ue().enabled(); // enable USART
